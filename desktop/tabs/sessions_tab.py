@@ -172,13 +172,22 @@ class SessionsTab(QWidget):
         for s in sessions:
             runtime = str(s.get("runtime") or s.get("provider") or "未知")
             project = str(s.get("project") or "未分类")
-            model = str(s.get("model") or "未知")
+            title = str(s.get("title") or s.get("session_name") or "")
+
+            # 模型字段：支持 list 或 str
+            models_val = s.get("models")
+            if isinstance(models_val, list):
+                model = ", ".join(str(m) for m in models_val if m)
+            else:
+                model = str(models_val or s.get("model") or "未知")
+
             tokens = int(s.get("tokens") or 0)
             cost = float(s.get("cost") or 0.0)
             turns = int(s.get("turns") or 0)
             sess_id = str(s.get("id") or "")
 
-            started = s.get("started")
+            # 开始时间字段：优先 start，其次 started
+            started = s.get("start") or s.get("started")
             if started:
                 try:
                     time_str = datetime.datetime.fromtimestamp(started).strftime("%Y-%m-%d %H:%M")
@@ -194,7 +203,8 @@ class SessionsTab(QWidget):
 
             # 创建表格项
             item_runtime = QStandardItem(runtime)
-            item_runtime.setData(sess_id, Qt.ItemDataRole.UserRole + 1)
+            # 在 UserRole+1 存储用于搜索的全部文本（包含 ID 与标题）
+            item_runtime.setData(f"{sess_id} {title}", Qt.ItemDataRole.UserRole + 1)
 
             item_project = QStandardItem(project)
             item_model = QStandardItem(model)
