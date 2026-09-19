@@ -44,3 +44,8 @@ token-meter-insights-report.html
 /blog-drafts/
 assets/
 .codex-slide-review
+
+# Token Meter custom exports & local runtime files
+*.pid
+PYTHON_EXECUTABLE
+custom/exports/*.json
