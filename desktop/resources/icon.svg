@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#07090c"/>
+  <path fill="#00bceb" d="M47.03 36.16v-7.58L10 10v8.32l28.7 13.97L10 46.44v8.14l37.03-18.4z"/>
+  <text x="32" y="58" text-anchor="middle" fill="#fff" font-size="8" font-weight="bold" font-family="sans-serif">METER</text>
+</svg>
