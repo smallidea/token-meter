@@ -50,4 +50,7 @@ assets/
 PYTHON_EXECUTABLE
 custom/exports/*.json
 build_desktop/
-dist_desktop/
+dist_desktop/
+build/
+dist/
+
