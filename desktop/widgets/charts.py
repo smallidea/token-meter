@@ -157,10 +157,10 @@ def _base_chart(title: str) -> QChart:
     chart.setTitleBrush(TEXT_COLOR)
     chart.setTitleFont(QFont("Segoe UI", 12, QFont.Weight.Bold))
     chart.legend().setLabelColor(DIM_COLOR)
-    chart.legend().setFont(QFont("Segoe UI", 9))
     chart.setMargins(QMargins(8, 8, 8, 8))
-    chart.setAnimationOptions(QChart.AnimationOption.SeriesAnimations)
+    chart.setAnimationOptions(QChart.AnimationOption.NoAnimation)
     return chart
+
 
 
 def _interactive_view(chart: QChart) -> InteractiveChartView:
