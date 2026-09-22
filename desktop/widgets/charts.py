@@ -10,7 +10,7 @@
 
 from PySide6.QtCore import Qt, QPointF, QMargins, QTimer
 from PySide6.QtGui import QColor, QPen, QFont, QPainter, QCursor
-from PySide6.QtWidgets import QFrame, QLabel, QVBoxLayout
+from PySide6.QtWidgets import QFrame, QLabel, QVBoxLayout, QToolTip
 from PySide6.QtCharts import (
     QChart, QChartView, QPieSeries, QLineSeries, QBarSeries, QBarSet,
     QBarCategoryAxis, QValueAxis, QPieSlice, QLegendMarker,
@@ -44,17 +44,20 @@ HIGHLIGHT_COLOR = QColor("#ffffff")
 
 
 class InteractiveChartView(QChartView):
-    """支持框选缩放、滚轮缩放、高亮联动的图表视图"""
+    """支持框选缩放、滚轮缩放、高亮联动与全区域近邻捕捉 Tooltip 的图表视图"""
 
     def __init__(self, chart: QChart):
         super().__init__(chart)
         self.setRenderHint(QPainter.RenderHint.Antialiasing)
         self.setStyleSheet("background: transparent; border: none;")
+        self.setMouseTracking(True)  # 开启全局鼠标追踪
+
         # 矩形框选缩放
         try:
             self.setRubberBand(QChartView.RubberBand.RectangleRubberBand)
         except Exception:
             self.setRubberBand(QChartView.RectangleRubberBand)
+
         # 供外部 tab 联动使用的引用
         self._chart_kind = None      # 'pie' | 'bar' | 'line'
         self._categories = []        # 分类名列表（bar/line）
@@ -66,66 +69,45 @@ class InteractiveChartView(QChartView):
         self._pie_values = []         # 与 slices 对齐的数值
         self._line_series = None
         self._line_points = []        # [(cat_label, value)]
+        self._is_token_line = True
         self._highlighted_index = -1
 
-        # 自绘 tooltip（不依赖 Qt 自带 QToolTip，避免全局深色样式把它染黑）
-        self._tip_frame = QFrame(self)
-        self._tip_frame.setWindowFlags(
-            Qt.WindowType.ToolTip | Qt.WindowType.FramelessWindowHint
-        )
-        self._tip_frame.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, False)
-        self._tip_frame.setStyleSheet("""
-            QFrame#ChartTooltip {
-                background-color: #17212b;
-                border: 1px solid rgba(0, 188, 235, 0.5);
-                border-radius: 8px;
-                padding: 6px 10px;
-            }
-            QLabel {
-                color: #f6f8fb;
-                background: transparent;
-                border: none;
-                font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
-                font-size: 12px;
-                line-height: 1.4;
-            }
-        """)
-        self._tip_frame.setObjectName("ChartTooltip")
-        tip_layout = QVBoxLayout(self._tip_frame)
-        tip_layout.setContentsMargins(8, 6, 8, 6)
-        self._tip_label = QLabel("")
-        self._tip_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-        tip_layout.addWidget(self._tip_label)
-        self._tip_frame.hide()
-        self._tip_hide_timer = QTimer(self)
-        self._tip_hide_timer.setSingleShot(True)
-        self._tip_hide_timer.setInterval(1500)
-        self._tip_hide_timer.timeout.connect(self.hide_tooltip)
-
-    # ---- 自绘 tooltip ----
-    def show_tooltip(self, text: str, local_pos: QPointF):
-        """在视图内 local_pos 位置显示 tooltip"""
-        self._tip_label.setText(text)
-        self._tip_frame.adjustSize()
-        # 换算成全局坐标，略作偏移避免遮挡鼠标
-        gp = self.mapToGlobal(local_pos.toPoint())
-        x = gp.x() + 14
-        y = gp.y() + 12
-        # 防止溢出屏幕右侧/底部
-        screen = self.screen().availableGeometry() if self.screen() else None
-        if screen is not None:
-            if x + self._tip_frame.width() > screen.right() - 8:
-                x = gp.x() - self._tip_frame.width() - 10
-            if y + self._tip_frame.height() > screen.bottom() - 8:
-                y = gp.y() - self._tip_frame.height() - 10
-        self._tip_frame.move(x, y)
-        self._tip_frame.show()
-        self._tip_frame.raise_()
-        self._tip_hide_timer.start()
+    # ---- 丝滑 Tooltip 系统 ----
+    def show_tooltip(self, text: str, local_pos: QPointF = None):
+        """显示原生自适应边缘的高质感 tooltip，坐标绝对不偏移"""
+        pos = QCursor.pos()
+        pos.setX(pos.x() + 14)
+        pos.setY(pos.y() + 14)
+        QToolTip.showText(pos, text, self)
 
     def hide_tooltip(self):
-        self._tip_hide_timer.stop()
-        self._tip_frame.hide()
+        QToolTip.hideText()
+
+    # ---- ECharts 级全区域近邻捕捉 (Nearest Neighbor Hit-testing) ----
+    def mouseMoveEvent(self, event):
+        super().mouseMoveEvent(event)
+        if self._chart_kind == "line" and self._line_points:
+            pos = event.position() if hasattr(event, "position") else event.pos()
+            chart = self.chart()
+            if chart:
+                plot_area = chart.plotArea()
+                if plot_area.contains(pos):
+                    val_pt = chart.mapToValue(pos)
+                    idx = int(round(val_pt.x()))
+                    if 0 <= idx < len(self._line_points):
+                        cat, r_val = self._line_points[idx]
+                        if self._is_token_line:
+                            tip_text = f"{cat}\n{_fmt_tokens(r_val)} Token ({int(r_val):,})"
+                        else:
+                            tip_text = f"{cat}\n{_fmt_money(r_val)}"
+                        self.show_tooltip(tip_text)
+                        return
+        if self._chart_kind == "line":
+            self.hide_tooltip()
+
+    def leaveEvent(self, event):
+        super().leaveEvent(event)
+        self.hide_tooltip()
 
     # ---- 滚轮缩放 ----
     def wheelEvent(self, event):
@@ -310,11 +292,12 @@ def create_line_chart(data: list, x_key: str, y_key: str,
     series.setName(y_label or y_key)
     series.setPen(QPen(ACCENT_COLOR, 2))
     series.setPointsVisible(True)
-    series.setMarkerSize(6)
+    series.setMarkerSize(8)
 
     view = _interactive_view(chart)
     view._chart_kind = "line"
     view._line_series = series
+    view._is_token_line = "token" in y_label.lower()
 
     if not data:
         chart.addSeries(series)

@@ -33,6 +33,16 @@ QMainWindow, QWidget {
     font-size: 13px;
 }
 
+QToolTip {
+    background-color: #17212b;
+    color: #f6f8fb;
+    border: 1px solid rgba(0, 188, 235, 0.7);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-family: "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei", sans-serif;
+    font-size: 12px;
+}
+
 /* 标签容器与药丸胶囊 TabBar */
 QTabWidget::pane {
     border: 1px solid rgba(255, 255, 255, 0.08);
