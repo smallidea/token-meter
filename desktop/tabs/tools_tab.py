@@ -150,44 +150,78 @@ class ToolsTab(QWidget):
     def update_data(self, data: dict):
         """接收数据并刷新（以 Token 消耗为主指标）"""
         cross = (data or {}).get("cross", {}) or {}
-        providers = cross.get("providers") or []
-        providers = [p for p in providers if isinstance(p, dict)]
+        logs = (data or {}).get("logs", {}) or {}
+        all_sessions = logs.get("sessions") or []
 
-        # 从 model_stats/models/model_mix 按 runtime 聚合
+        def _norm(s: str) -> str:
+            return str(s or "").lower().replace(" ", "").replace("-", "").replace("_", "")
+
+        # 1. 优先从全量 sessions 聚合各工具真实会话数与 Token
+        tool_stats = {}
+        for s in all_sessions:
+            if not isinstance(s, dict):
+                continue
+            p_raw = str(s.get("runtime") or s.get("provider") or s.get("client") or "other").strip()
+            key = _norm(p_raw)
+            tok = int(s.get("tokens") or 0)
+            c = float(s.get("cost") or 0.0)
+            if key not in tool_stats:
+                tool_stats[key] = {
+                    "provider": p_raw,
+                    "label": provider_label(p_raw),
+                    "sessions": 0,
+                    "tokens": 0,
+                    "cost": 0.0,
+                }
+            tool_stats[key]["sessions"] += 1
+            tool_stats[key]["tokens"] += tok
+            tool_stats[key]["cost"] += c
+
+        # 2. 结合 cross.get("providers") 补充或校准
+        providers = cross.get("providers") or []
+        for p in providers:
+            if not isinstance(p, dict):
+                continue
+            pid = str(p.get("provider") or "unknown")
+            key = _norm(pid)
+            if key in tool_stats:
+                tool_stats[key]["label"] = provider_label(pid)
+                if tool_stats[key]["sessions"] == 0:
+                    tool_stats[key]["sessions"] = int(p.get("sessions") or 0)
+            else:
+                tool_stats[key] = {
+                    "provider": pid,
+                    "label": provider_label(pid),
+                    "sessions": int(p.get("sessions") or 0),
+                    "tokens": 0,
+                    "cost": float(p.get("cost") or 0.0),
+                }
+
+        # 3. 补充从 model_mix / model_stats 计算的 token（双重保障）
         ms = cross.get("model_stats") or {}
-        if isinstance(ms, dict):
-            models = ms.get("models") or []
-        elif isinstance(ms, list):
-            models = ms
-        else:
-            models = []
-        if not models:
-            models = cross.get("model_mix") or []
-        runtime_tokens = {}
-        total_tokens = 0
+        models = (ms.get("models") if isinstance(ms, dict) else ms) or cross.get("model_mix") or []
         for m in models:
             if not isinstance(m, dict):
                 continue
-            rt = str(m.get("runtime") or "").lower()
+            rt_key = _norm(m.get("runtime") or "")
             t = m.get("tokens")
             tok = int(t) if t else (int(m.get("input_tokens") or 0) + int(m.get("output_tokens") or 0))
-            runtime_tokens[rt] = runtime_tokens.get(rt, 0) + tok
-            total_tokens += tok
+            if rt_key in tool_stats and tool_stats[rt_key]["tokens"] == 0:
+                tool_stats[rt_key]["tokens"] += tok
 
-        for p in providers:
-            pid = str(p.get("provider") or "unknown").lower()
-            p["_tokens"] = runtime_tokens.get(pid, 0)
-        providers.sort(key=lambda p: p.get("_tokens", 0), reverse=True)
+        tool_list = list(tool_stats.values())
+        total_tokens = sum(t["tokens"] for t in tool_list) or 1
+        tool_list.sort(key=lambda x: x["tokens"], reverse=True)
 
-        self.lbl_tools_count.setText(f"已接入工具: {len(providers)} 款")
+        self.lbl_tools_count.setText(f"已接入工具: {len(tool_list)} 款")
 
         # 重建表格
         self.source_model.removeRows(0, self.source_model.rowCount())
-        for p in providers:
-            pid = str(p.get("provider") or "未知")
-            label = provider_label(pid)
-            tokens = int(p.get("_tokens") or 0)
-            sessions = int(p.get("sessions") or 0)
+        for item in tool_list:
+            label = item["label"]
+            pid = item["provider"]
+            tokens = int(item["tokens"])
+            sessions = int(item["sessions"])
             share_pct = (tokens / total_tokens * 100.0) if total_tokens > 0 else 0.0
 
             item_name = QStandardItem(label)
@@ -211,12 +245,11 @@ class ToolsTab(QWidget):
 
         # 重建柱状图
         self._clear_chart()
-        if providers:
+        if tool_list:
             self.lbl_empty.hide()
             chart_data = [
-                {"provider": provider_label(p.get("provider")),
-                 "tokens": int(p.get("_tokens") or 0)}
-                for p in providers
+                {"provider": t["label"], "tokens": int(t["tokens"])}
+                for t in tool_list
             ]
             chart_view = create_bar_chart(
                 chart_data, x_key="provider", y_key="tokens",
