@@ -128,8 +128,9 @@ class OverviewTab(QWidget):
         self._line_card_layout.setSpacing(8)
 
         # 头部：标题与时间范围切换胶囊
-        header_layout = QHBoxLayout()
-        header_layout.setContentsMargins(4, 2, 4, 2)
+        header_widget = QWidget()
+        header_layout = QHBoxLayout(header_widget)
+        header_layout.setContentsMargins(2, 0, 2, 0)
         lbl_trend_title = QLabel("每日 Token 消耗趋势")
         lbl_trend_title.setFont(QFont("Segoe UI", 11, QFont.Weight.Bold))
         lbl_trend_title.setStyleSheet("color: #f6f8fb; border: none; background: transparent;")
@@ -158,7 +159,7 @@ class OverviewTab(QWidget):
                 color: #7d8ba0;
                 font-size: 11px;
                 font-weight: bold;
-                padding: 4px 10px;
+                padding: 3px 8px;
                 border-radius: 4px;
             }
             QPushButton:hover {
@@ -185,16 +186,16 @@ class OverviewTab(QWidget):
             btn_layout.addWidget(btn)
 
         header_layout.addWidget(btn_container)
-        self._line_card_layout.addLayout(header_layout)
+        self._line_card_layout.addWidget(header_widget)
 
         self._line_widget = QLabel("正在聚合每日趋势...")
         self._line_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._line_widget.setStyleSheet("color: #7d8ba0; font-size: 13px; border: none;")
-        self._line_widget.setMinimumHeight(380)
+        self._line_widget.setMinimumHeight(350)
         self._line_card_layout.addWidget(self._line_widget)
 
-        self._charts_layout.addWidget(self._pie_card, stretch=2)
-        self._charts_layout.addWidget(self._line_card, stretch=3)
+        self._charts_layout.addWidget(self._pie_card, stretch=3)
+        self._charts_layout.addWidget(self._line_card, stretch=5)
         self._layout.addLayout(self._charts_layout)
 
     def _on_range_changed(self, limit: int):

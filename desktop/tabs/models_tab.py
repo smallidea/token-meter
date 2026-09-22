@@ -79,6 +79,7 @@ class ModelsTab(QWidget):
 
         # 1. 图表卡片容器
         self.chart_card = QFrame()
+        self.chart_card.setMinimumHeight(300)
         self.chart_card.setStyleSheet("""
             QFrame {
                 background: #111820;
@@ -137,6 +138,7 @@ class ModelsTab(QWidget):
 
         splitter.setStretchFactor(0, 3)
         splitter.setStretchFactor(1, 4)
+        splitter.setSizes([360, 260])
         layout.addWidget(splitter)
 
     def _on_project_changed(self, project_name: str):
@@ -234,9 +236,10 @@ class ModelsTab(QWidget):
         # 创建并展示柱状图（按 Token 消耗排名）
         if chart_data:
             chart_view = create_bar_chart(
-                chart_data[:30], x_key="model", y_key="tokens",
-                title="模型 Token 消耗排名 (Top 10)", y_label="Token", color="#c7a7ff"
+                chart_data[:12], x_key="model", y_key="tokens",
+                title="模型 Token 消耗排名 (Top 12)", y_label="Token", color="#c7a7ff"
             )
+            chart_view.setMinimumHeight(260)
             self._current_chart_view = chart_view
             self.chart_layout.addWidget(chart_view)
 

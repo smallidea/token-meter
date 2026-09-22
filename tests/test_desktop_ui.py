@@ -100,7 +100,7 @@ class DesktopUiTests(unittest.TestCase):
 
     def test_line_chart_scale_and_categories(self):
         from desktop.widgets.charts import create_line_chart
-        from PySide6.QtCharts import QBarCategoryAxis, QValueAxis
+        from PySide6.QtCharts import QDateTimeAxis, QBarCategoryAxis, QValueAxis
 
         # 测试大量数据点与亿级数值
         data = [
@@ -111,17 +111,47 @@ class DesktopUiTests(unittest.TestCase):
         self.assertIsNotNone(chart_view)
 
         chart = chart_view.chart()
-        axes_x = [a for a in chart.axes() if isinstance(a, QBarCategoryAxis)]
+        axes_x = [a for a in chart.axes() if isinstance(a, (QDateTimeAxis, QBarCategoryAxis))]
         axes_y = [a for a in chart.axes() if isinstance(a, QValueAxis)]
 
         self.assertEqual(len(axes_x), 1)
         self.assertEqual(len(axes_y), 1)
 
-        # 验证分类数量严格等于数据点数量（零宽空格未被合并）
-        self.assertEqual(axes_x[0].count(), 30)
+        # 验证X轴刻度尺基准线显式可见
+        self.assertTrue(axes_x[0].isLineVisible())
         # 验证Y轴自动切换为亿并合理紧凑留白（最大 3 亿 * 1.15 = 3.45 亿）
         self.assertIn("亿", axes_y[0].titleText())
         self.assertAlmostEqual(axes_y[0].max(), 3.0 * 1.15, places=2)
+
+    def test_daily_tab_range_switching_and_no_scroll(self):
+        from desktop.tabs.daily_tab import DailyTab
+        from PySide6.QtWidgets import QScrollArea
+        tab = DailyTab()
+        # 注入多达 60 天的数据，确保无 QScrollArea
+        mock_sessions = [
+            {"start": f"2026-07-{i:02d}", "tokens": 50000, "cost": 0.5}
+            for i in range(1, 31)
+        ] + [
+            {"start": f"2026-08-{i:02d}", "tokens": 80000, "cost": 0.8}
+            for i in range(1, 31)
+        ]
+        tab.update_data({"logs": {"sessions": mock_sessions}})
+
+        # 验证默认 30 天，无任何 QScrollArea 产生
+        self.assertEqual(tab._selected_range_limit, 30)
+        scroll_areas = tab.chart_card.findChildren(QScrollArea)
+        self.assertEqual(len(scroll_areas), 0)
+
+        # 测试切换到 14 天
+        tab._on_range_changed(14)
+        self.assertEqual(tab._selected_range_limit, 14)
+        self.assertEqual(len(tab.chart_card.findChildren(QScrollArea)), 0)
+
+        # 测试切换到 全部
+        tab._on_range_changed(0)
+        self.assertEqual(tab._selected_range_limit, 0)
+        self.assertEqual(len(tab.chart_card.findChildren(QScrollArea)), 0)
+        tab.close()
 
     def test_overview_tab_range_switching_and_filtering(self):
         from desktop.tabs.overview_tab import OverviewTab

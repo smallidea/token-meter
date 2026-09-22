@@ -86,6 +86,7 @@ class ToolsTab(QWidget):
 
         # 1. 图表卡片
         self.chart_card = QFrame()
+        self.chart_card.setMinimumHeight(300)
         self.chart_card.setStyleSheet("""
             QFrame {
                 background: #111820;
@@ -139,6 +140,7 @@ class ToolsTab(QWidget):
 
         splitter.setStretchFactor(0, 3)
         splitter.setStretchFactor(1, 4)
+        splitter.setSizes([360, 260])
         layout.addWidget(splitter)
 
     def _clear_chart(self):
@@ -255,6 +257,7 @@ class ToolsTab(QWidget):
                 chart_data, x_key="provider", y_key="tokens",
                 title="各工具 Token 消耗分布", y_label="Token", color="#00bceb"
             )
+            chart_view.setMinimumHeight(260)
             self._current_chart_view = chart_view
             self.chart_layout.addWidget(chart_view)
         else:
