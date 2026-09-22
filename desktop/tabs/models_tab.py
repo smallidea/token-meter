@@ -8,10 +8,10 @@ from PySide6.QtCore import Qt, QSortFilterProxyModel
 from PySide6.QtGui import QStandardItemModel, QStandardItem
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
-    QTableView, QHeaderView, QAbstractItemView, QSplitter,
+    QTableView, QHeaderView, QAbstractItemView, QSplitter, QFrame,
 )
 
-from desktop.widgets.charts import create_bar_chart
+from desktop.widgets.charts import create_bar_chart, _fmt_tokens
 
 
 class NumericSortProxy(QSortFilterProxyModel):
@@ -39,36 +39,73 @@ class ModelsTab(QWidget):
         self._current_chart_view = None
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(12)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(14)
 
         # 顶部工具栏
         toolbar = QHBoxLayout()
-        toolbar.addWidget(QLabel("项目:"))
+        toolbar.setSpacing(12)
+
+        lbl_proj = QLabel("项目筛选:")
+        lbl_proj.setStyleSheet("color: #a8b3c1; font-weight: 600;")
+        toolbar.addWidget(lbl_proj)
+
         self.combo_project = QComboBox()
         self.combo_project.addItem("所有项目")
         self.combo_project.currentTextChanged.connect(self._on_project_changed)
         toolbar.addWidget(self.combo_project)
+
         toolbar.addStretch()
+
+        # 顶部指标小胶囊
+        self.lbl_model_badge = QLabel("模型总数: 0")
+        self.lbl_model_badge.setStyleSheet("""
+            QLabel {
+                background: #17212b;
+                color: #c7a7ff;
+                border: 1px solid rgba(199, 167, 255, 0.3);
+                border-radius: 6px;
+                padding: 4px 10px;
+                font-weight: bold;
+                font-size: 11.5px;
+            }
+        """)
+        toolbar.addWidget(self.lbl_model_badge)
+
         layout.addLayout(toolbar)
 
-        # 分割容器（上：图表，下：明细表格）
+        # 分割容器（上：图表卡片，下：明细表格卡片）
         splitter = QSplitter(Qt.Orientation.Vertical)
 
-        # 图表容器
-        self.chart_container = QWidget()
-        self.chart_layout = QVBoxLayout(self.chart_container)
-        self.chart_layout.setContentsMargins(0, 0, 0, 0)
+        # 1. 图表卡片容器
+        self.chart_card = QFrame()
+        self.chart_card.setStyleSheet("""
+            QFrame {
+                background: #111820;
+                border: 1px solid rgba(255, 255, 255, 0.08);
+                border-radius: 10px;
+            }
+        """)
+        self.chart_layout = QVBoxLayout(self.chart_card)
+        self.chart_layout.setContentsMargins(12, 12, 12, 12)
+
         self.lbl_chart_empty = QLabel("暂无模型统计图表数据")
         self.lbl_chart_empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lbl_chart_empty.setStyleSheet("color: #7d8ba0;")
+        self.lbl_chart_empty.setStyleSheet("color: #7d8ba0; border: none;")
         self.chart_layout.addWidget(self.lbl_chart_empty)
-        splitter.addWidget(self.chart_container)
+        splitter.addWidget(self.chart_card)
 
-        # 表格容器
-        table_container = QWidget()
-        table_layout = QVBoxLayout(table_container)
-        table_layout.setContentsMargins(0, 0, 0, 0)
+        # 2. 表格卡片容器
+        self.table_card = QFrame()
+        self.table_card.setStyleSheet("""
+            QFrame {
+                background: #111820;
+                border: 1px solid rgba(255, 255, 255, 0.08);
+                border-radius: 10px;
+            }
+        """)
+        table_layout = QVBoxLayout(self.table_card)
+        table_layout.setContentsMargins(12, 12, 12, 12)
 
         self.source_model = QStandardItemModel()
         self.source_model.setHorizontalHeaderLabels(self.HEADERS)
@@ -82,6 +119,11 @@ class ModelsTab(QWidget):
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setAlternatingRowColors(True)
         self.table.verticalHeader().setVisible(False)
+        self.table.setShowGrid(False)
+
+        # 表格选中/悬停联动柱状图高亮
+        self.table.selectionModel().selectionChanged.connect(self._on_table_selection)
+        self.table.entered.connect(self._on_table_entered)
 
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
@@ -91,7 +133,7 @@ class ModelsTab(QWidget):
         header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
 
         table_layout.addWidget(self.table)
-        splitter.addWidget(table_container)
+        splitter.addWidget(self.table_card)
 
         splitter.setStretchFactor(0, 3)
         splitter.setStretchFactor(1, 4)
@@ -139,33 +181,45 @@ class ModelsTab(QWidget):
 
         if not models:
             self.lbl_chart_empty.show()
+            self.lbl_model_badge.setText("模型总数: 0")
             return
 
         self.lbl_chart_empty.hide()
 
         chart_data = []
         valid_models = [m for m in models if isinstance(m, dict)]
-        for m in sorted(valid_models, key=lambda x: float(x.get("cost") or 0.0), reverse=True):
+        self.lbl_model_badge.setText(f"活跃模型: {len(valid_models)} 个")
+
+        def _tok(m):
+            t = m.get("tokens")
+            if t:
+                return float(t)
+            return float(int(m.get("input_tokens") or 0) + int(m.get("output_tokens") or 0))
+
+        for m in sorted(valid_models, key=_tok, reverse=True):
             model_name = str(m.get("model") or "未知")
             cost = float(m.get("cost") or 0.0)
-            # 计算总 Token
-            tokens = int(m.get("tokens") or (int(m.get("input_tokens") or 0) + int(m.get("output_tokens") or 0)))
+            tokens = int(_tok(m))
             sessions = int(m.get("sessions") or m.get("logs") or m.get("requests") or m.get("executions") or 0)
             share_pct = (cost / total_cost * 100.0) if total_cost > 0 else 0.0
 
-            chart_data.append({"model": model_name, "cost": cost})
+            chart_data.append({"model": model_name, "tokens": tokens})
 
             item_name = QStandardItem(model_name)
+            runtime = str(m.get("runtime") or "")
+            if runtime:
+                item_name.setToolTip(f"运行时: {runtime}")
 
-            item_sessions = QStandardItem(str(sessions))
+            item_sessions = QStandardItem(f"{sessions:,}")
             item_sessions.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             item_sessions.setData(sessions, Qt.ItemDataRole.UserRole)
 
-            item_tokens = QStandardItem(f"{tokens:,}")
+            item_tokens = QStandardItem(_fmt_tokens(tokens))
             item_tokens.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             item_tokens.setData(tokens, Qt.ItemDataRole.UserRole)
 
-            item_cost = QStandardItem(f"${cost:.4f}" if 0 < cost < 0.01 else f"${cost:.2f}")
+            cost_str = f"${cost:.4f}" if 0 < cost < 0.01 else f"${cost:.2f}"
+            item_cost = QStandardItem(cost_str)
             item_cost.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             item_cost.setData(cost, Qt.ItemDataRole.UserRole)
 
@@ -177,14 +231,16 @@ class ModelsTab(QWidget):
                 item_name, item_sessions, item_tokens, item_cost, item_share
             ])
 
-        # 创建并展示柱状图
+        # 创建并展示柱状图（按 Token 消耗排名）
         if chart_data:
             chart_view = create_bar_chart(
-                chart_data[:10], x_key="model", y_key="cost",
-                title="模型花费排名 (Top 10)", y_label="花费 ($)", color="#c7a7ff"
+                chart_data[:30], x_key="model", y_key="tokens",
+                title="模型 Token 消耗排名 (Top 10)", y_label="Token", color="#c7a7ff"
             )
             self._current_chart_view = chart_view
             self.chart_layout.addWidget(chart_view)
+
+        self.table.sortByColumn(2, Qt.SortOrder.DescendingOrder)
 
     def update_data(self, data: dict):
         """接收新数据更新"""
@@ -210,3 +266,27 @@ class ModelsTab(QWidget):
         self.combo_project.blockSignals(False)
 
         self._on_project_changed(self.combo_project.currentText())
+
+    def _highlight_bar(self, model_name, on: bool):
+        if not model_name or not self._current_chart_view:
+            return
+        try:
+            self._current_chart_view.highlight_category(model_name, on)
+        except Exception:
+            pass
+
+    def _on_table_selection(self, selected, deselected):
+        if self._current_chart_view:
+            self._current_chart_view.reset_highlight()
+        rows = self.table.selectionModel().selectedRows() if self.table.selectionModel() else []
+        if rows:
+            name = self.proxy_model.data(self.proxy_model.mapToSource(rows[0]))
+            self._highlight_bar(name, True)
+
+    def _on_table_entered(self, index):
+        if not index.isValid():
+            return
+        if self._current_chart_view:
+            self._current_chart_view.reset_highlight()
+        name = self.proxy_model.data(index)
+        self._highlight_bar(name, True)

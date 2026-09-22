@@ -1,0 +1,28 @@
+{
+  "note": "Web ground truth captured from /state xsession — desktop must match these",
+  "kpi": {"total_cost": 163.9957, "total_tokens": 1181492218, "total_sessions": 115, "total_executions": 9251},
+  "providers": [
+    {"provider": "cursor", "cost": 48.3078, "sessions": 28},
+    {"provider": "antigravity", "cost": 42.9440, "sessions": 30},
+    {"provider": "codex", "cost": 40.6008, "sessions": 24},
+    {"provider": "workbuddy", "cost": 0.5718, "sessions": 10},
+    {"provider": "traecn", "cost": 0.0171, "sessions": 23}
+  ],
+  "models_top10": [
+    {"model": "composer-2.5", "runtime": "Cursor", "cost": 48.3078},
+    {"model": "gemini-3.8-flash", "runtime": "Antigravity", "cost": 42.9440},
+    {"model": "gemini-3.8-flash-medium", "runtime": "Antigravity", "cost": 20.6502},
+    {"model": "gpt-5.6-terra", "runtime": "Codex", "cost": 13.9708},
+    {"model": "gpt-6-astra", "runtime": "Codex", "cost": 11.1541},
+    {"model": "gemini-3.1-pro-preview", "runtime": "Antigravity", "cost": 10.9041},
+    {"model": "gpt-5.6-terra", "runtime": "Codex", "cost": 8.0650},
+    {"model": "gpt-5.6-terra", "runtime": "Codex", "cost": 6.8147},
+    {"model": "gpt-5.6-luna", "runtime": "Codex", "cost": 0.5963},
+    {"model": "hy4-preview", "runtime": "WorkBuddy", "cost": 0.4383}
+  ],
+  "daily_newest_first": [
+    {"day": "2026-09-21", "cost": 60.3898, "sessions": 15},
+    {"day": "2026-09-20", "cost": 12.2056, "sessions": 27},
+    {"day": "2026-09-19", "cost": 10.9546, "sessions": 6}
+  ]
+}
