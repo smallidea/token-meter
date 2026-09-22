@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """Token Meter 运行时补丁注入器 (零侵入挂载自定义适配器、中文前端与路径归一化引擎)
 
 包含：
@@ -29,13 +29,15 @@ def apply_patches():
     from custom.antigravity_adapter import AntigravityRuntimeAdapter
     from custom.workbuddy_adapter import WorkbuddyRuntimeAdapter
     from custom.traecn_adapter import TraeCNRuntimeAdapter
+    from custom.grokbot_adapter import GrokbotRuntimeAdapter
+    from custom.doubao_adapter import DoubaoRuntimeAdapter
 
     # 2. 注入自定义适配器到 RuntimeRegistry
     orig_runtime_registry = app.runtime_registry
 
     def patched_runtime_registry():
         current = orig_runtime_registry()
-        if "antigravity" in current.runtime_ids:
+        if "antigravity" in current.runtime_ids and "grokbot" in current.runtime_ids:
             return current
 
         compat = {
@@ -47,6 +49,8 @@ def apply_patches():
             AntigravityRuntimeAdapter(compat=compat),
             WorkbuddyRuntimeAdapter(compat=compat),
             TraeCNRuntimeAdapter(compat=compat),
+            GrokbotRuntimeAdapter(compat=compat),
+            DoubaoRuntimeAdapter(compat=compat),
         ]
         all_adapters = list(current._ordered) + custom_adapters
         new_registry = RuntimeRegistry(all_adapters)
@@ -63,7 +67,7 @@ def apply_patches():
             source = app.source_from_path(source)
         if isinstance(source, dict):
             provider = source.get("provider")
-            if provider in ("antigravity", "workbuddy", "traecn"):
+            if provider in ("antigravity", "workbuddy", "traecn", "grokbot", "doubao"):
                 reg = app.runtime_registry()
                 adapter = reg.get(provider)
                 if adapter and hasattr(adapter, "load"):
@@ -71,6 +75,7 @@ def apply_patches():
         return orig_recompute(source)
 
     app.recompute = patched_recompute
+
 
     # 4. 增强 source_from_path 查找能力
     orig_source_from_path = app.source_from_path
@@ -228,6 +233,7 @@ def apply_patches():
 
     app.cross_session = patched_cross_session
 
-    print("[Token Meter] 已成功挂载高性能运行适配器: Antigravity, WorkBuddy, Trae CN", flush=True)
+    print("[Token Meter] 已成功挂载高性能运行适配器: Antigravity, WorkBuddy, Trae CN, Grok Bot, 豆包 (Doubao)", flush=True)
     print("[Token Meter] 已启用 Windows 磁盘编号不区分大小写归一化引擎", flush=True)
     print(f"[Token Meter] 已生效中文界面: {os.environ.get('TOKEN_METER_PAGE')}", flush=True)
+

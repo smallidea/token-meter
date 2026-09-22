@@ -31,6 +31,12 @@ CUSTOM_PRICES = {
     # 腾讯混元 / WorkBuddy 系列
     "hy4-preview": {"input": 0.50, "output": 1.50, "cache_read": 0.10, "cache_write": 0.50},
     "hunyuan": {"input": 0.50, "output": 1.50, "cache_read": 0.10, "cache_write": 0.50},
+    # xAI Grok 系列
+    "grok-2": {"input": 2.00, "output": 10.00, "cache_read": 0.50, "cache_write": 2.00},
+    "grok-2-mini": {"input": 0.20, "output": 1.00, "cache_read": 0.05, "cache_write": 0.20},
+    "grok-beta": {"input": 5.00, "output": 15.00, "cache_read": 1.25, "cache_write": 5.00},
+    "grok-4": {"input": 3.00, "output": 15.00, "cache_read": 0.75, "cache_write": 3.00},
+
 }
 
 
