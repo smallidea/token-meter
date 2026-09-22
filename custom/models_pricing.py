@@ -14,9 +14,16 @@ CUSTOM_PRICES = {
     "gemini-3-flash-preview": {"input": 0.10, "output": 0.40, "cache_read": 0.025, "cache_write": 0.10},
     "gemini-2.5-flash": {"input": 0.075, "output": 0.30, "cache_read": 0.01875, "cache_write": 0.075},
     "gemini-2.5-flash-lite": {"input": 0.0375, "output": 0.15, "cache_read": 0.01, "cache_write": 0.0375},
+    # DeepSeek 系列 (Trae / 国内开发者常用)
+    "deepseek-v3": {"input": 0.14, "output": 0.28, "cache_read": 0.014, "cache_write": 0.14},
+    "deepseek-chat": {"input": 0.14, "output": 0.28, "cache_read": 0.014, "cache_write": 0.14},
+    "deepseek-r1": {"input": 0.55, "output": 2.19, "cache_read": 0.14, "cache_write": 0.55},
+    "deepseek-reasoner": {"input": 0.55, "output": 2.19, "cache_read": 0.14, "cache_write": 0.55},
     # 字节豆包 / Trae 系列
     "doubao-seed-code": {"input": 0.12, "output": 0.30, "cache_read": 0.03, "cache_write": 0.12},
     "doubao-seed-evolving": {"input": 0.20, "output": 0.60, "cache_read": 0.05, "cache_write": 0.20},
+    "doubao-1.5-pro": {"input": 0.12, "output": 0.30, "cache_read": 0.03, "cache_write": 0.12},
+    "seed-m8": {"input": 0.12, "output": 0.30, "cache_read": 0.03, "cache_write": 0.12},
     "doubao_1_6": {"input": 0.12, "output": 0.30, "cache_read": 0.03, "cache_write": 0.12},
     # 智谱 GLM 系列
     "glm-5.3-flash": {"input": 0.07, "output": 0.14, "cache_read": 0.01, "cache_write": 0.07},

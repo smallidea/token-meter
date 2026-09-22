@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """Token Meter 运行时补丁注入器 (零侵入挂载自定义适配器、中文前端与路径归一化引擎)
 
 包含：
@@ -180,9 +180,7 @@ def apply_patches():
 
     app.git_delivery_state = patched_git_delivery_state
 
-    # 5. 智能聚合优化：每个平台取最新的活跃会话进行聚合（上限 30 个/平台，总计约 120 个），
-    #    既保证今日、本周和各模型指标 100% 精确，又将全量冷启动计算时间从 116 秒骤降至 1~2 秒，
-    #    彻底杜绝客户端超时断连导致的 [WinError 10053]！
+    # 5. 全量聚合，不裁剪历史会话（之前每平台只取 30 个导致 1888 个会话被遗漏）
     orig_canonical_aggregation_sources = app.canonical_aggregation_sources
 
     def patched_canonical_aggregation_sources(sources):
@@ -190,26 +188,6 @@ def apply_patches():
         for s in source_rows:
             if isinstance(s, dict) and "project" in s:
                 s["project"] = normalize_project(s["project"])
-
-        if len(source_rows) > 120:
-            by_provider = {}
-            for s in source_rows:
-                p = s.get("provider") or "other"
-                by_provider.setdefault(p, []).append(s)
-
-            def get_mtime(s):
-                try:
-                    return float(s.get("mtime") or 0.0)
-                except Exception:
-                    return 0.0
-
-            balanced_sources = []
-            for p, p_sources in by_provider.items():
-                p_sources.sort(key=get_mtime, reverse=True)
-                balanced_sources.extend(p_sources[:30])
-
-            balanced_sources.sort(key=get_mtime, reverse=True)
-            return balanced_sources
         return source_rows
 
     app.canonical_aggregation_sources = patched_canonical_aggregation_sources

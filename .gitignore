@@ -49,3 +49,5 @@ assets/
 *.pid
 PYTHON_EXECUTABLE
 custom/exports/*.json
+build_desktop/
+dist_desktop/
